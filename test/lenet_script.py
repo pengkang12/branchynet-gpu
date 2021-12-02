@@ -37,18 +37,21 @@ import time
 
 #define how many times we measure performance, and get the average result. 
 REPEAT = 3
+model_name="../_models/lenet_mnist.bn"
+autoencoder_name='../_models/autoencoder/autoencoder_lenet.h5'
+threshold_base=0.05
+TEST_BATCHSIZE = 10    
 
 def measure_performance_LeNet(X, Y):
     # load branchynet
     branchyNet = None
-    with open("../_models/lenet_mnist.bn", "rb") as f:
+    with open(model_name, "rb") as f:
         branchyNet = dill.load(f)
     #set network to inference mode, this is fob_test_data_yr measuring baseline function. 
     branchyNet.testing()
     branchyNet.verbose = False
 
     #branchyNet.to_cpu()
-    TEST_BATCHSIZE = 10    
     
     if cuda.available:
         branchyNet.to_gpu()
@@ -66,15 +69,14 @@ def measure_performance_LeNet(X, Y):
 def measure_performance_branchynet(X, Y,threshold=0):
     # load branchynet
     branchyNet = None
-    with open("../_models/lenet_mnist.bn", "rb") as f:
+    with open(model_name, "rb") as f:
         branchyNet = dill.load(f)
     #set network to inference mode, this is fob_test_data_yr measuring baseline function. 
     branchyNet.testing()
     branchyNet.verbose = False
 
     #branchyNet.to_cpu()
-    TEST_BATCHSIZE = 10    
-    thresholds = [0.05+threshold]
+    thresholds = [threshold_base+threshold]
     #print(decoded_imgs.shape)
     
     cpu_time_a = (time.time(), psutil.cpu_times())
@@ -104,7 +106,7 @@ def measure_performance_branchynet(X, Y,threshold=0):
 def measure_perf_and_time(X_test_tmp, Y_test_tmp, data_tmp_shape, threshold=0.5):
     
     b_test_data_x = X_test_tmp.reshape(data_tmp_shape)
-    autoencoder = models.load_model('../_models/autoencoder/autoencoder_lenet.h5')
+    autoencoder = models.load_model(autoencoder_name)
 
     cpu_time_a = (time.time(), psutil.cpu_times())
     
@@ -142,6 +144,7 @@ def calculate(t1, t2):
     all_delta = t2_all - t1_all
     busy_perc = (busy_delta / all_delta) * 100
     return round(busy_perc, 1)
+
 def get_data():
     mnist = fetch_openml('mnist_784')
     x_all = mnist['data'].astype(np.float32) / 255
@@ -157,8 +160,8 @@ X_train, Y_train, X_test, Y_test = get_data()
 print("\nmeasure branchyNet")
 measure_performance_branchynet(X_test, Y_test)
 print("\n\nmeasure BranchyNet with early exit")
-#measure_performance_branchynet(X_test, Y_test, 2)
+measure_performance_branchynet(X_test, Y_test, 2)
 print("\n\nmeasure LeNet")
-#measure_performance_LeNet(X_test, Y_test)
+measure_performance_LeNet(X_test, Y_test)
 print("\n\nmeasure performance data,all data go into different exits")
 measure_perf_and_time(X_test, Y_test, (-1, 784), 2)

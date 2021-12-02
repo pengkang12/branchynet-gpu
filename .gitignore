@@ -1,1 +1,3 @@
 datasets/data/
+datasets/data/qmnist/_qmnist/QMNIST/processed/
+datasets/data/qmnist/_qmnist/QMNIST/raw/
