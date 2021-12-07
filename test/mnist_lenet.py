@@ -40,7 +40,9 @@ REPEAT = 3
 model_name="../_models/lenet_mnist.bn"
 autoencoder_name='../_models/autoencoder/autoencoder_lenet.h5'
 threshold_base=0.05
-TEST_BATCHSIZE = 10    
+TEST_BATCHSIZE = 1    
+
+USE_GPU = True
 
 def measure_performance_LeNet(X, Y):
     # load branchynet
@@ -53,7 +55,7 @@ def measure_performance_LeNet(X, Y):
 
     #branchyNet.to_cpu()
     
-    if cuda.available:
+    if cuda.available and USE_GPU:
         branchyNet.to_gpu()
 
     res_basediff = []
@@ -80,7 +82,7 @@ def measure_performance_branchynet(X, Y,threshold=0):
     #print(decoded_imgs.shape)
     
     cpu_time_a = (time.time(), psutil.cpu_times())
-    if cuda.available:
+    if cuda.available and USE_GPU:
         branchyNet.to_gpu()
         pass
     res_diff = [] 
