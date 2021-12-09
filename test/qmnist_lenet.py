@@ -42,7 +42,8 @@ model_name="../_models/lenet_mnist.bn"
 autoencoder_name='../_models/autoencoder/autoencoder_lenet.h5'
 threshold_base=0.05
 TEST_BATCHSIZE = 10    
-USE_GPU = True
+USE_GPU = True 
+
 
 def measure_performance_LeNet(X, Y):
     # load branchynet
@@ -54,19 +55,26 @@ def measure_performance_LeNet(X, Y):
     branchyNet.verbose = False
 
     #branchyNet.to_cpu()
-    
+    cpu_time_a = (time.time(), psutil.cpu_times())
+
     if USE_GPU and cuda.available:
         branchyNet.to_gpu()
 
     res_basediff = []
     for i in range(REPEAT):
-    	c_baseacc, c_basediff, _, _ = utils.test(branchyNet, X, Y, main=True, batchsize=TEST_BATCHSIZE)
+        c_baseacc, c_basediff, _, _ = utils.test(branchyNet, X, Y, main=True, batchsize=TEST_BATCHSIZE)
         res_basediff.append(c_basediff)
- 
+
     print("LeNet accuracy is ", c_baseacc)
     print("LeNet time is ", sum(res_basediff)/REPEAT)
     print("\n")
+    cpu_time_b = (time.time(), psutil.cpu_times())
+    print 'CPU used in %.2f seconds: %s' % (
+        cpu_time_b[0] - cpu_time_a[0],
+        calculate(cpu_time_a[1], cpu_time_b[1])
+    )
     return c_baseacc, c_basediff
+
 
 def measure_performance_branchynet(X, Y,threshold=0):
     # load branchynet
@@ -163,15 +171,66 @@ _, _, Q_X_test, Q_Y_test = qmnist.get_qmnist("../datasets/qmnist/")
 Q_Y_test = Q_Y_test.reshape(-1 , )
 Q_data_shape = (Q_X_test.shape[0], 784)
 
-# measure branchyNet
-print("\nmeasure branchyNet")
-measure_performance_branchynet(Q_X_test, Q_Y_test)
-# measure BranchyNet with early exit
-print("\n\nmeasure BranchyNet with early exit")
-measure_performance_branchynet(Q_X_test, Q_Y_test, 2)
-# measure LeNet
-print("\n\nmeasure LeNet")
-measure_performance_LeNet(Q_X_test, Q_Y_test)
-# measure performance data,all data go into different exits
-print("\n\nmeasure performance data,all data go into different exits")
-measure_perf_and_time(Q_X_test, Q_Y_test, (-1, 784), 2)
+def measure_perf():
+    # measure branchyNet
+    print("\nmeasure branchyNet")
+    measure_performance_branchynet(Q_X_test, Q_Y_test)
+    # measure BranchyNet with early exit
+    print("\n\nmeasure BranchyNet with early exit")
+    measure_performance_branchynet(Q_X_test, Q_Y_test, 2)
+    # measure LeNet
+    print("\n\nmeasure LeNet")
+    measure_performance_LeNet(Q_X_test, Q_Y_test)
+    # measure performance data,all data go into different exits
+    print("\n\nmeasure performance data,all data go into different exits")
+    measure_perf_and_time(Q_X_test, Q_Y_test, (-1, 784), 2)
+
+
+def scale_analysis(percentile=0.1):
+
+    X_test_part = []
+    Y_test_part = []
+
+
+    for i in range(10):
+        X_test_part.append(Q_X_test[Q_Y_test == i][0:int(6000*percentile), :])
+        Y_test_part.append(Q_Y_test[Q_Y_test == i][0:int(6000*percentile)])
+    
+    X_test_part = np.concatenate(X_test_part)
+    Y_test_part = np.concatenate(Y_test_part).reshape(-1, )
+    
+    return measure_performance_branchynet(X_test_part, Y_test_part)
+    
+
+acc = []
+run_time = []
+for i in range(1, 11, 1):
+    _acc, _time = scale_analysis(i/10.0)
+    acc.append(_acc)
+    run_time.append(_time)
+print(list(map(lambda x: x[0], acc)))
+print(list(map(lambda x: x[0], run_time)))
+
+def scale_analysis(percentile=0.1):
+
+    X_test_part = []
+    Y_test_part = []
+
+
+    for i in range(10):
+        X_test_part.append(Q_X_test[Q_Y_test == i][0:int(6000*percentile), :])
+        Y_test_part.append(Q_Y_test[Q_Y_test == i][0:int(6000*percentile)])
+    
+    X_test_part = np.concatenate(X_test_part)
+    Y_test_part = np.concatenate(Y_test_part).reshape(-1, )
+
+    return measure_perf_and_time(X_test_part, Y_test_part, (-1, 784), 2)
+    
+acc = []
+run_time = []
+for i in range(1, 11, 1):
+    _acc, _time = scale_analysis(i/10.0)
+    acc.append(_acc)
+    run_time.append(_time)
+print(list(map(lambda x: x[0], acc)))
+print(list(map(lambda x: x[0], run_time)))
